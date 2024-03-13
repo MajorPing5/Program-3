@@ -17,13 +17,3 @@
           (displayln data)
           (loop))))
     (printf "\nEnd of file\n\n")))
-
-(call-with-output-file "STATEMENT.TXT"
-  (λ (out-port)
-    (display "Output functions as intended." out-port)))
-
-#|(define main
-;; To Be Implemented
-  )
-
-(main)|#
