@@ -4,6 +4,7 @@
 be created. Enable/disable using either #t or #f appropriately |#
 (define create_output #f)
 
+;; The following 3 functions manage the input/output of the files for this programming assignment.
 (call-with-input-file "ACCOUNTS.TXT"
   (λ (in-port)
     (let loop()
