@@ -1,5 +1,9 @@
 #lang racket/gui
 
+#| The following under this line will dictate if an ouput is or is not to
+be created. Enable/disable using either #t or #f appropriately |#
+(define create_output #f)
+
 (call-with-input-file "ACCOUNTS.TXT"
   (λ (in-port)
     (let loop()
@@ -18,9 +22,13 @@
           (loop))))
     (printf "\nEnd of file\n\n")))
 
-(call-with-output-file "STATEMENT.TXT"
-  (λ (out-port)
-    (display "Output functions as intended." out-port)))
+(if create_output
+  [call-with-output-file "STATEMENT.TXT"
+    (λ (out-port)
+      [display "Output functions as intended." out-port])]
+  (begin
+         (displayln "Output file has not been created due to initial Bool call.")
+         (displayln "To create the output file, change line 5 to '#t' and try again")))
 
 #|(define main
 ;; To Be Implemented
