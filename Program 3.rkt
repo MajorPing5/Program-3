@@ -4,8 +4,25 @@
 be created. Enable/disable using either #t or #f appropriately |#
 (define create_output #f)
 
-;; The following 3 functions manage the input of the files for this assignment.
+;; The following is intended to serve as the struct for user account information
+(struct user
+  (acct_num name balance) #:transparent)
 
+;; The following is the dedicated function for reading in accounts.txt
+(define (reading_accounts_data data filename)
+  (match data
+    [(list acct_num name balance)
+     (user
+      (string->number acct_num)
+      (name)
+      (string->number balance))]
+    [_ (error (format "Error reading file: ~a" filename))]))
+
+;; The following is the dedicated function for reading in statement.txt
+(define (reading_statement_data)
+  (displayln "Statement data in process of being read"))
+
+;; The following 3 functions manage the input of the files for this assignment.
 (define (process-file filename)
   (call-with-input-file filename
     (λ (in-port)
@@ -13,7 +30,12 @@ be created. Enable/disable using either #t or #f appropriately |#
         (if (eof-object? line)
             (printf "\nEnd of file\n\n") ;; If the line is an end of line object
             (let* ([normalized-line (regexp-replace* #rx"\r|\n" (string-trim line) "")]
-                   [data (string-split normalized-line #rx"(/s/s+)|[\t]+")]) ;; Look for double space or tab special character
+                   [data (string-split normalized-line #rx" {2,}|[\t]+")]) ;; Look for double space or tab special character
+              (cond [(string=? filename "ACCOUNTS.TXT") ;; If the file being read is accounts
+                     (reading_accounts_data data filename)]
+                    [(string=? filename "STATEMENT.TXT")
+                     (reading_statement_data data filename)]
+                    [else (error (format "File not recognized: ~a" filename))])
               (displayln data)
               (loop (read-line in-port))))))))
 
