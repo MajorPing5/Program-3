@@ -8,16 +8,6 @@ be created. Enable/disable using either #t or #f appropriately |#
 (struct user
   (acct_num name balance) #:transparent)
 
-;; The following is the dedicated function for reading in accounts.txt
-(define (reading_accounts_data data filename)
-  (match data
-    [(list acct_num name balance)
-     (user
-      (string->number acct_num)
-      (name)
-      (string->number balance))]
-    [_ (error (format "Error reading file: ~a" filename))]))
-
 ;; The following is the dedicated function for reading in statement.txt
 (define (reading_statement_data)
   (displayln "Statement data in process of being read"))
@@ -39,6 +29,15 @@ be created. Enable/disable using either #t or #f appropriately |#
               (displayln data)
               (loop (read-line in-port))))))))
 
+;; The following is the dedicated function for reading in accounts.txt
+(define (reading_accounts_data data filename)
+  (match data
+    [(list acct_num name balance)
+     (user
+      (string->number acct_num)
+      (name)
+      (string->number balance))]
+    [_ (error (format "Error reading file: ~a" filename))]))
 
 ;; This function is intended to execute if and only if line 5 is set to true
 (define (create_output_check)
