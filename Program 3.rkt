@@ -23,7 +23,7 @@
             (user (string->number acct_num) name (string->number balance))]
            [_ (error (format "Error reading file: ~a" filename))])))
 
-;;The following function below will decide which manipulation tactics to do based on the .txt it is being pulled from
+;; The following function below will decide which manipulation tactics to do based on the .txt it is being pulled from
 
 ;; The following function below will now manipulate the information based on the .txt being pulled
 (define (fileManip line filename)
@@ -33,7 +33,7 @@
          [data (regexp-split #px"[ ]{2,}|[\t]+" trimmed-line)]) ;; Look for double space or tab special character exclusively
     (cond [(string=? filename "ACCOUNTS.TXT") ;; If the file being read is accounts
            (reading_accounts_data data filename)
-           (cons data user)]
+           (cons user processed-accounts)]
           [(string=? filename "TRANSACTIONS.TXT")
            (reading_transaction_data data filename)]
           [else (error (format "File not found: ~a" filename))])
@@ -54,14 +54,6 @@
       (begin ;; If Line 5 is False
         (displayln "Output file has not been created due to initial Bool call.")
         (displayln "To create the output file, change line 5 to '#t' and try again"))))
-
-#| This function is intended to execute if I need to ensure proper data input is being passed.
-   This is purely for debugging purposes only.
-(define (output_accounts_check)
-  (if show_accounts
-      [for-each ])) ;; Currently working HERE! |#
-
-
 
 #| The following is the main bulk of all debugging functions.
 If all are off, then program will operate as normal.

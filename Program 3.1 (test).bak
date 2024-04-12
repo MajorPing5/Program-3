@@ -1,0 +1,49 @@
+#lang racket
+
+(define filename "ACCOUNTS.TXT")
+
+(define lines
+  '("456109801804  \"J. L. Picard\"   0.0 \r" "234987234981  \"J. T. Kirk & Co.\"  298.18\r" "982340982348  \"Spacely Sprockets\"  29109.14\r"))
+
+;; The following holds the global reference for all properly processed data to ensure easy referencing
+(define processed-accounts '())
+
+;; The following is intended to serve as the struct for user account information
+(struct user
+  (acct_num name balance) #:transparent)
+
+;; The following is the dedicated function for reading in transaction.txt
+(define (reading_transaction_data data filename)
+  (displayln "Transaction data in process of being read"))
+
+;; The following is the dedicated function for reading in accounts.txt
+(define (reading_accounts_data data filename)
+  (λ (data filename)
+         (match data
+           [(list acct_num name balance)
+            (user (string->number acct_num) name (string->number balance))]
+           [_ (error (format "Error reading file: ~a" filename))])))
+
+(define (fileManip line filename)
+(begin
+  (let* (;; Removes /r or /n special characters from lines
+         [cleaned-line (regexp-replace* #rx"\r|\n" line "")]
+         ;; Trims lines for excess spaces after removal of spec chars
+         [trimmed-line (string-trim cleaned-line)]
+         ;; Look for double space or tab special character exclusively
+         [data (regexp-split #px"[ ]{2,}|[\t]+" trimmed-line)])
+    
+    (cond [(string=? filename "ACCOUNTS.TXT") ;; If the file being read is accounts
+           (reading_accounts_data data filename)
+           (cons user processed-accounts)]
+          [(string=? filename "TRANSACTIONS.TXT")
+           (reading_transaction_data data filename)]
+          [else (error (format "File not found: ~a" filename))])
+    
+    (displayln data))))
+
+;; The following function will open and read in the data lines into a list (lines), before calling for File Manipulation
+(define (process-file filename)
+  (let ([lines (file->lines filename)])
+    (for ([line (in-list lines)])
+      (fileManip line filename))))
