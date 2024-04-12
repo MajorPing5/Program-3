@@ -2,8 +2,7 @@
 
 #|The following is intended to serve as the struct for
   user account information|#
-(struct user
-  (acct_num name balance) #:transparent)
+(struct user (acct_num name balance) #:transparent)
 
 #| The following demonstrates a polymorphic struct data type for payments,
    allowing easier addition of different payment types based on what's
@@ -11,13 +10,15 @@
 (struct transaction (type acct_num timestamp) #:transparent)
 
 (struct purchase transaction (merchant amount) #:transparent)
-(struct cash transaction (amount) #:transparent)
-(struct check transaction (chk_num amount) #:transparent)
+(struct cash transaction (method amount) #:transparent)
+(struct check transaction (method chk_num amount) #:transparent)
 
  ;; Accounts for both debit and credit card payments
-(struct credit transaction (card_num amount) #:transparent)
+(struct credit transaction (method card_num amount) #:transparent)
 
-;; The following is the dedicated function for reading in transaction.txt
+#| This function matches the data line currently read according
+   to its identifiers, separating the information appropriately before
+   returning the struct properly formatted for mapping|#
 (define (reading_transaction_data data filename)
   (match data
     [(list "Purchase" acct_num timestamp merchant amount)
@@ -27,18 +28,21 @@
                merchant
                (string->number amount))]
     [(list "Payment" acct_num timestamp "Cash" amount)
-     (cash (string->number acct_num)
+     (cash "Payment"
+           (string->number acct_num)
            (string->number timestamp)
            "Cash"
            (string->number amount))]
     [(list "Payment" acct_num timestamp "Check" chk_num amount)
-     (check (string->number acct_num)
+     (check "Payment"
+            (string->number acct_num)
             (string->number timestamp)
             "Check"
             (string->number chk_num)
             (string->number amount))]
     [(list "Payment" acct_num timestamp "Credit" card_num amount)
-     (credit (string->number acct_num)
+     (credit "Payment"
+             (string->number acct_num)
              (string->number timestamp)
              "Credit"
              (string->number card_num)
@@ -49,21 +53,9 @@
 (define (reading_accounts_data data filename)
   (match data
            [(list string_acct_num name string_balance)
-            (define acct_num (string->number string_acct_num))
-            (define balance (string->number string_balance))
-            (user acct_num name balance)
-#|          (printf "User information - Account Number: ~a\n" acct_num)
-            (if (number? acct_num)
-                (printf "Account Number is in numeric data form\n")
-                (printf "Account Number is still in string data form\n"))
-            (printf " Name: ~a\n" name)
-            (if (string? name)
-                (printf "Account Number is in string data form\n")
-                (printf "Account Number is in unknown data form\n"))
-            (printf "Balance: ~a\n" balance)
-            (if (number? balance)
-                (printf "User Balance is in numeric data form\n")
-                (printf "User Balance is still in string data form\n")) |#]
+            (let ([acct_num (string->number string_acct_num)]
+                  [balance (string->number string_balance)])
+            (user acct_num name balance))]
            [_ (error (format "Error reading data: ~a" data))]))
 
 ;; This function is intended to clean up the lines read in
@@ -86,9 +78,6 @@
 
         ;; If the file being read is transactions
         [(string=? filename "TRANSACTIONS.TXT")
-         (if (list? data)
-             (printf "Data line is in list format\n")
-             (printf "Data line is NOT in list format"))
          (reading_transaction_data data filename)]
 
         ;; If the file being read is neither
@@ -101,7 +90,24 @@
   (map (λ (line) (fileManip line filename)) lines))
 
 (define (main)
-  (process-file "ACCOUNTS.TXT")
-  (process-file "TRANSACTIONS.TXT"))
+  (define users (process-file "ACCOUNTS.TXT"))
+  (for-each (λ (user)
+              (printf "Account: ~a, Name: ~a, Balance: ~a\n"
+                      (user-acct_num user)
+                      (user-name user)
+                      (user-balance user)))
+              users)
+  (define activity (process-file "TRANSACTIONS.TXT"))
+  (for-each (λ (transaction)
+              ((printf "Type: ~a, Account Number: ~a, Timestamp: ~a\n"
+                      (transaction-type transaction)
+                      (transaction-acct_num transaction)
+                      (transaction-timestamp transaction))
+              (cond
+                [(string=? (transaction-type transaction) "Purchase")
+                 (printf "Merchant: ~a, Amount: ~a"
+                         (purchase-merchant purchase))]
+                [(string=? (#|Currently working here. Find way to check if cash, check, or credit payment|#))])))
+              activity))
   
 (main)
