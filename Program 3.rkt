@@ -5,8 +5,8 @@ ranging from creating the output file to showing the math evaluations
 inbetween each evaluation. Should any of these be set to #t, then the
 debugging function WILL execute|#
 (define create_output #f)
-(define display-user-struct-information #t)
-(define display-transaction-struct-information #t)
+(define display-user-struct-information #f)
+(define display-transaction-struct-information #f)
 
 #|The following is intended to serve as the struct for
   user account information|#
@@ -169,11 +169,50 @@ debugging call. Check lines 7-x for which debugging check you want|#
         (void))
   (create_output_check)))
 
+(define (only-account-numbers accounts-list)
+  (map user-acct_num accounts-list))
+
+(define (filter-by-account structs account-number)
+  (filter (λ (struct)
+            (= (transaction-acct_num struct) account-number))
+          structs))
+
+(define (sum-payments transactions)
+  (foldl (lambda (transaction acc)
+           (if (or (cash? transaction) (check? transaction) (credit? transaction))
+               (+ (transaction-amount transaction) acc)
+               acc))
+         0
+         transactions))
+
+(define (sum-purchases transactions)
+  (foldl (lambda (transaction acc)
+           (if (purchase? transaction)
+               (+ (purchase-amount transaction) acc)
+               acc))
+         0
+         transactions))
+
+(define (process-account transactions-list account-num)
+  (let ((filtered-transactions (filter-transactions-by-account transactions-list account-num)))
+    (let ((total-payments (sum-payments filtered-transactions))
+          (total-purchases (sum-purchases filtered-transactions)))
+      ;; Output or return the aggregated data
+      (values total-payments total-purchases))))
+
 #| This is the start of the 'main' function, what is intended to
 automatically execute when using the run function of the compiler|#
 (define (main)
   (define accounts-list (process-file "ACCOUNTS.TXT"))
   (define transactions-list (process-file "TRANSACTIONS.TXT"))
+
+    (for-each (lambda (account-num)
+              (let-values (((total-payments total-purchases)
+                            (process-account transactions-list account-num)))
+                (printf "Account: ~a\nTotal Payments: ~a\nTotal Purchases: ~a\n"
+                        account-num total-payments total-purchases)))
+            account-numbers)
+  
   (debugging_check accounts-list transactions-list))
 
 (main)
