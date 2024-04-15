@@ -13,7 +13,7 @@ debugging function WILL execute|#
 (struct user (acct_num name balance) #:transparent)
 
 #| The following demonstrates a polymorphic struct data type for payments,
-   allowing easier addition of different payment types based on what's
+   allowing easier addition of different transaction types based on what's
    allowed and not without the need of adding more complex structs. |#
 (struct transaction (type acct_num timestamp) #:transparent)
 
@@ -21,7 +21,7 @@ debugging function WILL execute|#
 (struct cash transaction (method amount) #:transparent)
 (struct check transaction (method chk_num amount) #:transparent)
 
- ;; Accounts for both debit and credit card payments
+;; Accounts for both debit and credit card payments
 (struct credit transaction (method card_num amount) #:transparent)
 
 #| This function matches the data line currently read according
@@ -65,11 +65,11 @@ formatting rules outlined in the assignment's documentation|#
 ;; The following is the dedicated function for reading in accounts.txt
 (define (reading_accounts_data data)
   (match data
-           [(list string_acct_num name string_balance)
-            (let ([acct_num (string->number string_acct_num)]
-                  [balance (string->number string_balance)])
-            (user acct_num name balance))]
-           [_ (error (format "Error reading file: ACCOUNTS.txt"))]))
+    [(list string_acct_num name string_balance)
+     (let ([acct_num (string->number string_acct_num)]
+           [balance (string->number string_balance)])
+       (user acct_num name balance))]
+    [_ (error (format "Error reading file: ACCOUNTS.txt"))]))
 
 ;; This function is intended to clean up the lines read in
 ;; and send the information appropriate to the file it was read from
@@ -152,7 +152,7 @@ throughout the program|#
                          (credit-method transaction)
                          (credit-card_num transaction)
                          (credit-amount transaction))]))
-              transactions-list))
+            transactions-list))
 
 #| The following is the main bulk of all debugging functions.
 If all are off, then program will ignore everything and run as normal.
@@ -167,38 +167,51 @@ debugging call. Check lines 7-x for which debugging check you want|#
     (if display-transaction-struct-information
         (show-transaction-struct-info transactions-list)
         (void))
-  (create_output_check)))
+    (create_output_check)))
 
+;; Creates a list of only the account numbers in the users account list
 (define (only-account-numbers accounts-list)
   (map user-acct_num accounts-list))
 
-(define (filter-by-account structs account-number)
-  (filter (λ (struct)
-            (= (transaction-acct_num struct) account-number))
-          structs))
+;; Filters the list of transactions using a given account number
+(define (filter-by-account all-transactions account-number)
+  (filter (λ (transaction)
+            (= (transaction-acct_num transaction) account-number))
+          all-transactions))
 
-(define (sum-payments transactions)
+#| Given a list of filtered transactions under 1 user account number,
+use the amount tag for each payment and add them together to create the
+sum payment amount for the account's history|#
+(define (sum-payments filtered-transactions)
   (foldl (lambda (transaction acc)
-           (if (or (cash? transaction) (check? transaction) (credit? transaction))
-               (+ (transaction-amount transaction) acc)
-               acc))
+           (cond [(cash? transaction)
+                  (+ (cash-amount transaction) acc)]
+                 [(check? transaction)
+                  (+ (check-amount transaction) acc)]
+                 [(credit? transaction)
+                  (+ (credit-amount transaction) acc)]
+                 [else acc]))
          0
-         transactions))
+         filtered-transactions))
 
-(define (sum-purchases transactions)
+#| Given a list of filtered transactions under 1 user account number,
+use the amount tag for each purchase and add them together to create the
+sum purchase amount for the account's history|#
+(define (sum-purchases filtered-transactions)
   (foldl (lambda (transaction acc)
            (if (purchase? transaction)
                (+ (purchase-amount transaction) acc)
                acc))
          0
-         transactions))
+         filtered-transactions))
 
-(define (process-account transactions-list account-num)
-  (let ((filtered-transactions (filter-transactions-by-account transactions-list account-num)))
-    (let ((total-payments (sum-payments filtered-transactions))
-          (total-purchases (sum-purchases filtered-transactions)))
-      ;; Output or return the aggregated data
-      (values total-payments total-purchases))))
+(define (process-account all-transactions account-num)
+  (let* ([filtered-transactions
+          (filter-by-account all-transactions account-num)]
+         [total-payments (sum-payments filtered-transactions)]
+         [total-purchases (sum-purchases filtered-transactions)])
+    ;; Output or return the aggregated data
+    (values total-payments total-purchases)))
 
 #| This is the start of the 'main' function, what is intended to
 automatically execute when using the run function of the compiler|#
@@ -206,12 +219,16 @@ automatically execute when using the run function of the compiler|#
   (define accounts-list (process-file "ACCOUNTS.TXT"))
   (define transactions-list (process-file "TRANSACTIONS.TXT"))
 
-    (for-each (lambda (account-num)
+  (for-each (lambda (account-num)
               (let-values (((total-payments total-purchases)
-                            (process-account transactions-list account-num)))
-                (printf "Account: ~a\nTotal Payments: ~a\nTotal Purchases: ~a\n"
-                        account-num total-payments total-purchases)))
-            account-numbers)
+                            (process-account
+                             transactions-list account-num)))
+                (printf
+                 "Account: ~a\nTotal Payments: ~a\nTotal Purchases: ~a\n"
+                 account-num
+                 total-payments
+                 total-purchases)))
+            (only-account-numbers accounts-list))
   
   (debugging_check accounts-list transactions-list))
 
