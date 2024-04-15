@@ -19,7 +19,7 @@
 #| This function matches the data line currently read according
    to its identifiers, separating the information appropriately before
    returning the struct properly formatted for mapping|#
-(define (reading_transaction_data data filename)
+(define (reading_transaction_data data)
   (match data
     [(list "Purchase" acct_num timestamp merchant amount)
      (purchase "Purchase"
@@ -47,16 +47,18 @@
              "Credit"
              (string->number card_num)
              (string->number amount))]
-    [else (error (format "Incorrect transaction format: ~a" data))]))
+    [else (error (format "Error reading transaction format: ~a\n"
+                         data))]))
 
 ;; The following is the dedicated function for reading in accounts.txt
-(define (reading_accounts_data data filename)
+(define (reading_accounts_data data)
   (match data
            [(list string_acct_num name string_balance)
             (let ([acct_num (string->number string_acct_num)]
                   [balance (string->number string_balance)])
             (user acct_num name balance))]
-           [_ (error (format "Error reading data: ~a" data))]))
+           [_ (error (format "Error reading account information: ~a\n"
+                             data))]))
 
 ;; This function is intended to clean up the lines read in
 ;; and send the information appropriate to the file it was read from
@@ -74,11 +76,11 @@
       (cond
         ;; If the file being read is accounts
         [(string=? filename "ACCOUNTS.TXT")
-         (reading_accounts_data data filename)]
+         (reading_accounts_data data)]
 
         ;; If the file being read is transactions
         [(string=? filename "TRANSACTIONS.TXT")
-         (reading_transaction_data data filename)]
+         (reading_transaction_data data)]
 
         ;; If the file being read is neither
         [else (error (format "File not found: ~a" filename))]))))
@@ -90,24 +92,38 @@
   (map (λ (line) (fileManip line filename)) lines))
 
 (define (main)
-  (define users (process-file "ACCOUNTS.TXT"))
+  (define accounts-list (process-file "ACCOUNTS.TXT"))
+  (define transactions-list (process-file "TRANSACTIONS.TXT"))
   (for-each (λ (user)
               (printf "Account: ~a, Name: ~a, Balance: ~a\n"
                       (user-acct_num user)
                       (user-name user)
                       (user-balance user)))
-              users)
-  (define activity (process-file "TRANSACTIONS.TXT"))
+              accounts-list)
   (for-each (λ (transaction)
-              ((printf "Type: ~a, Account Number: ~a, Timestamp: ~a\n"
+              (printf "Type: ~a, Account Number: ~a, Timestamp: ~a, "
                       (transaction-type transaction)
                       (transaction-acct_num transaction)
                       (transaction-timestamp transaction))
               (cond
-                [(string=? (transaction-type transaction) "Purchase")
-                 (printf "Merchant: ~a, Amount: ~a"
-                         (purchase-merchant purchase))]
-                [(string=? (#|Currently working here. Find way to check if cash, check, or credit payment|#))])))
-              activity))
+                [(purchase? transaction)
+                 (printf "Merchant: ~a, Amount: ~a\n"
+                         (purchase-merchant transaction)
+                         (purchase-amount transaction))]
+                [(cash? transaction)
+                 (printf "Method: ~a, Amount: ~a\n"
+                         (cash-method transaction)
+                         (cash-amount transaction))]
+                [(check? transaction)
+                 (printf "Method: ~a, Check Number: ~a, Amount: ~a\n"
+                         (check-method transaction)
+                         (check-chk_num transaction)
+                         (check-amount transaction))]
+                [(credit? transaction)
+                 (printf "Method: ~a, Card Number: ~a, Amount: ~a\n"
+                         (credit-method transaction)
+                         (credit-card_num transaction)
+                         (credit-amount transaction))]))
+              transactions-list))
   
 (main)
