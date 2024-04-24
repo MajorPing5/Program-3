@@ -1,5 +1,7 @@
 #lang racket
 
+(provide (all-defined-out))
+
 #| The following functions are for triggering specific debugging calls,
 ranging from creating the output file to showing the math evaluations
 inbetween each evaluation. Should any of these be set to #t, then the
@@ -232,4 +234,5 @@ automatically execute when using the run function of the compiler|#
   
   (debugging_check accounts-list transactions-list))
 
-(main)
+(when (equal? (current-command-line-arguments) '("run"))
+  (main))
