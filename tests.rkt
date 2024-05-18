@@ -1,13 +1,17 @@
 #lang racket
 
-(require rackunit)
-(require rackunit/text-ui)
-
 ;; Require your program module with renaming to avoid conflicts
-(require (rename-in "Program-3.rkt"
-                    
-#| Renames 'check' to 'program-check' or another suitable name |#
-                    [check program-check]))  
+(require (rename-in rackunit
+#| Renames 'check' to 'rackunit-check' for rackuinit module,
+only local to this file |#
+                    [check rackunit-check]))
+(require (rename-in "preprocessing.rkt"
+#| Renames 'check' to 'program-check' from preprocessing.rkt file,
+only locally to this file |#
+                    [check payment-check]))
+
+
+(require "processing.rkt")  
 
 (module+ test
   ;; Define all your unit tests here
@@ -35,11 +39,12 @@
                             100.00)
                   "Purchase transaction data does not parse correctly")
     (check-equal?
-     (reading-transaction-data '("Payment"
-                                 "123456789012"
-                                 "1234567"
-                                 "Cash"
-                                 "100.00"))
+     (reading-transaction-data
+      '("Payment"
+        "123456789012"
+        "1234567"
+        "Cash"
+        "100.00"))
      (cash "Payment"
            123456789012
            1234567
@@ -48,13 +53,14 @@
      "Check Payment transaction data does not parse correctly")
     ;; Test parsing check payment transaction
     (check-equal?
-     (reading-transaction-data '("Payment"
-                                 "123456789012"
-                                 "20200101"
-                                 "Check"
-                                 "11101"
-                                 "100.00"))
-     (check "Payment"
+     (reading-transaction-data
+      '("Payment"
+        "123456789012"
+        "20200101"
+        "Check"
+        "11101"
+        "100.00"))
+     (payment-check "Payment"
             123456789012
             20200101
             "Check"
@@ -87,7 +93,7 @@
                                      20200101
                                      "Cash"
                                      150.00)
-                               (check "Payment"
+                               (payment-check "Payment"
                                       123456789012
                                       20200102
                                       "Check"
@@ -126,6 +132,3 @@
   (test-payment-calculation)
   (test-purchase-calculation)
 )
-
-(module+ main
-  (run-tests 'test))
