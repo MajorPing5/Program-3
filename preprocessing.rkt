@@ -9,7 +9,7 @@
 #| The following demonstrates a polymorphic struct data type for payments,
    allowing easier addition of different transaction types based on what's
    allowed and not without the need of adding more complex structs. |#
-(struct transaction (type acct-num timestamp) #:transparent)
+(struct transaction (id type acct-num timestamp) #:transparent)
 
 (struct purchase transaction (merchant amount) #:transparent)
 (struct cash transaction (method amount) #:transparent)
@@ -17,6 +17,15 @@
 
 ;; Accounts for both debit and credit card payments
 (struct credit transaction (method card-num amount) #:transparent)
+
+;; Dynamic Counter to create and track a transactions' ID upon reading in
+(define transaction-counter (make-parameter 10001))
+
+;; Creates a unique transaction upon intial read
+(define (generate-transaction-id)
+  (let ([id (transaction-counter)])
+    (transaction-counter (λ (x) (+ x 1)))
+    id))
 
 #| This function matches the data line currently read according
 to its identifiers, separating the information appropriately before
@@ -26,35 +35,40 @@ Note: It is imperative that the transaction data lines are following the
 formatting rules outlined in the assignment's documentation|#
 
 (define (reading-transaction-data data)
+  (let ([id (generate-transaction-id)])
   (match data
     [(list "Purchase" acct-num timestamp merchant amount)
-     (purchase "Purchase"
+     (purchase id
+               "Purchase"
                (string->number acct-num)
                (string->number timestamp)
                merchant
                (string->number amount))]
     [(list "Payment" acct-num timestamp "Cash" amount)
-     (cash "Payment"
+     (cash id
+           "Payment"
            (string->number acct-num)
            (string->number timestamp)
            "Cash"
            (string->number amount))]
     [(list "Payment" acct-num timestamp "Check" chk-num amount)
-     (check "Payment"
+     (check id
+            "Payment"
             (string->number acct-num)
             (string->number timestamp)
             "Check"
             (string->number chk-num)
             (string->number amount))]
     [(list "Payment" acct-num timestamp "Credit" card-num amount)
-     (credit "Payment"
+     (credit id
+             "Payment"
              (string->number acct-num)
              (string->number timestamp)
              "Credit"
              (string->number card-num)
              (string->number amount))]
     [else (error (format "Error reading transaction format: ~a\n"
-                         data))]))
+                         data))])))
 
 ;; The following is the dedicated function for reading in accounts.txt
 (define (reading-accounts-data data)
