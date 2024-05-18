@@ -6,25 +6,25 @@
 ranging from creating the output file to showing the math evaluations
 inbetween each evaluation. Should any of these be set to #t, then the
 debugging function WILL execute|#
-(define create_output #f)
+(define create-output #f)
 (define display-user-struct-information #f)
 (define display-transaction-struct-information #f)
 
 #|The following is intended to serve as the struct for
   user account information|#
-(struct user (acct_num name balance) #:transparent)
+(struct user (acct-num name balance) #:transparent)
 
 #| The following demonstrates a polymorphic struct data type for payments,
    allowing easier addition of different transaction types based on what's
    allowed and not without the need of adding more complex structs. |#
-(struct transaction (type acct_num timestamp) #:transparent)
+(struct transaction (type acct-num timestamp) #:transparent)
 
 (struct purchase transaction (merchant amount) #:transparent)
 (struct cash transaction (method amount) #:transparent)
-(struct check transaction (method chk_num amount) #:transparent)
+(struct check transaction (method chk-num amount) #:transparent)
 
 ;; Accounts for both debit and credit card payments
-(struct credit transaction (method card_num amount) #:transparent)
+(struct credit transaction (method card-num amount) #:transparent)
 
 #| This function matches the data line currently read according
 to its identifiers, separating the information appropriately before
@@ -33,44 +33,44 @@ returning the struct properly formatted for mapping.
 Note: It is imperative that the transaction data lines are following the
 formatting rules outlined in the assignment's documentation|#
 
-(define (reading_transaction_data data)
+(define (reading-transaction-data data)
   (match data
-    [(list "Purchase" acct_num timestamp merchant amount)
+    [(list "Purchase" acct-num timestamp merchant amount)
      (purchase "Purchase"
-               (string->number acct_num)
+               (string->number acct-num)
                (string->number timestamp)
                merchant
                (string->number amount))]
-    [(list "Payment" acct_num timestamp "Cash" amount)
+    [(list "Payment" acct-num timestamp "Cash" amount)
      (cash "Payment"
-           (string->number acct_num)
+           (string->number acct-num)
            (string->number timestamp)
            "Cash"
            (string->number amount))]
-    [(list "Payment" acct_num timestamp "Check" chk_num amount)
+    [(list "Payment" acct-num timestamp "Check" chk-num amount)
      (check "Payment"
-            (string->number acct_num)
+            (string->number acct-num)
             (string->number timestamp)
             "Check"
-            (string->number chk_num)
+            (string->number chk-num)
             (string->number amount))]
-    [(list "Payment" acct_num timestamp "Credit" card_num amount)
+    [(list "Payment" acct-num timestamp "Credit" card-num amount)
      (credit "Payment"
-             (string->number acct_num)
+             (string->number acct-num)
              (string->number timestamp)
              "Credit"
-             (string->number card_num)
+             (string->number card-num)
              (string->number amount))]
     [else (error (format "Error reading transaction format: ~a\n"
                          data))]))
 
 ;; The following is the dedicated function for reading in accounts.txt
-(define (reading_accounts_data data)
+(define (reading-accounts-data data)
   (match data
-    [(list string_acct_num name string_balance)
-     (let ([acct_num (string->number string_acct_num)]
-           [balance (string->number string_balance)])
-       (user acct_num name balance))]
+    [(list string-acct-num name string-balance)
+     (let ([acct-num (string->number string-acct-num)]
+           [balance (string->number string-balance)])
+       (user acct-num name balance))]
     [_ (error (format "Error reading file: ACCOUNTS.txt"))]))
 
 ;; This function is intended to clean up the lines read in
@@ -89,11 +89,11 @@ formatting rules outlined in the assignment's documentation|#
       (cond
         ;; If the file being read is accounts
         [(string=? filename "ACCOUNTS.TXT")
-         (reading_accounts_data data)]
+         (reading-accounts-data data)]
 
         ;; If the file being read is transactions
         [(string=? filename "TRANSACTIONS.TXT")
-         (reading_transaction_data data)]
+         (reading-transaction-data data)]
 
         ;; If the file being read is neither
         [else (error (format "File not found: ~a" filename))]))))
@@ -106,8 +106,8 @@ formatting rules outlined in the assignment's documentation|#
   (map (λ (line) (fileManip line filename)) lines))
 
 ;; This function is intended to execute only if line 5 is set to true
-(define (create_output_check)
-  (if create_output
+(define (create-output-check)
+  (if create-output
       [call-with-output-file "STATEMENT.TXT"
         (λ (out-port) ;; If Line 5 is True...
           [display "Output functions as intended." out-port])]
@@ -124,7 +124,7 @@ throughout the program|#
 (define (show-user-struct-info accounts-list)
   (for-each (λ (user)
               (printf "Account: ~a, Name: ~a, Balance: ~a\n"
-                      (user-acct_num user)
+                      (user-acct-num user)
                       (user-name user)
                       (user-balance user)))
             accounts-list))
@@ -133,7 +133,7 @@ throughout the program|#
   (for-each (λ (transaction)
               (printf "Type: ~a, Account Number: ~a, Timestamp: ~a, "
                       (transaction-type transaction)
-                      (transaction-acct_num transaction)
+                      (transaction-acct-num transaction)
                       (transaction-timestamp transaction))
               (cond
                 [(purchase? transaction)
@@ -147,12 +147,12 @@ throughout the program|#
                 [(check? transaction)
                  (printf "Method: ~a, Check Number: ~a, Amount: ~a\n"
                          (check-method transaction)
-                         (check-chk_num transaction)
+                         (check-chk-num transaction)
                          (check-amount transaction))]
                 [(credit? transaction)
                  (printf "Method: ~a, Card Number: ~a, Amount: ~a\n"
                          (credit-method transaction)
-                         (credit-card_num transaction)
+                         (credit-card-num transaction)
                          (credit-amount transaction))]))
             transactions-list))
 
@@ -161,7 +161,7 @@ If all are off, then program will ignore everything and run as normal.
 If any are on, then the interaction panel will display the appropriate
 debugging call. Check lines 7-x for which debugging check you want|#
 
-(define (debugging_check accounts-list transactions-list)
+(define (debugging-check accounts-list transactions-list)
   (begin
     (if display-user-struct-information
         (show-user-struct-info accounts-list)
@@ -169,16 +169,16 @@ debugging call. Check lines 7-x for which debugging check you want|#
     (if display-transaction-struct-information
         (show-transaction-struct-info transactions-list)
         (void))
-    (create_output_check)))
+    (create-output-check)))
 
 ;; Creates a list of only the account numbers in the users account list
 (define (only-account-numbers accounts-list)
-  (map user-acct_num accounts-list))
+  (map user-acct-num accounts-list))
 
 ;; Filters the list of transactions using a given account number
 (define (filter-by-account all-transactions account-number)
   (filter (λ (transaction)
-            (= (transaction-acct_num transaction) account-number))
+            (= (transaction-acct-num transaction) account-number))
           all-transactions))
 
 #| Given a list of filtered transactions under 1 user account number,
@@ -232,7 +232,7 @@ automatically execute when using the run function of the compiler|#
                  total-purchases)))
             (only-account-numbers accounts-list))
   
-  (debugging_check accounts-list transactions-list))
+  (debugging-check accounts-list transactions-list))
 
-(when (equal? (current-command-line-arguments) '("run"))
+(when (null? (current-command-line-arguments))
   (main))

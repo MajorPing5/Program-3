@@ -1,41 +1,77 @@
 #lang racket
 
-#| The following functions are for triggering specific debugging calls, ranging from creating the output file
-   to showing the math evaluations inbetween each evaluation. Should any of these be set to #t, then |#
-(define create_output #f)
+(provide (all-defined-out))
 
-;; The following is intended to serve as the struct for user account information
-(struct user
-  (acct_num name balance) #:transparent)
+#| The following functions are for triggering specific debugging calls,
+ranging from creating the output file to showing the math evaluations
+inbetween each evaluation. Should any of these be set to #t, then the
+debugging function WILL execute|#
+(define create-output #f)
+(define display-user-struct-information #f)
+(define display-transaction-struct-information #f)
 
-(struct transaction (type acct_num timestamp merchant amount))
+#|The following is intended to serve as the struct for
+  user account information|#
+(struct user (acct-num name balance) #:transparent)
 
-;; The following is the dedicated function for reading in transaction.txt
-(define (reading_transaction_data data filename)
-  (displayln "Transaction data in process of being read"))
+#| The following demonstrates a polymorphic struct data type for payments,
+   allowing easier addition of different transaction types based on what's
+   allowed and not without the need of adding more complex structs. |#
+(struct transaction (type acct-num timestamp) #:transparent)
+
+(struct purchase transaction (merchant amount) #:transparent)
+(struct cash transaction (method amount) #:transparent)
+(struct check transaction (method chk-num amount) #:transparent)
+
+;; Accounts for both debit and credit card payments
+(struct credit transaction (method card-num amount) #:transparent)
+
+#| This function matches the data line currently read according
+to its identifiers, separating the information appropriately before
+returning the struct properly formatted for mapping.
+
+Note: It is imperative that the transaction data lines are following the
+formatting rules outlined in the assignment's documentation|#
+
+(define (reading-transaction-data data)
+  (match data
+    [(list "Purchase" acct-num timestamp merchant amount)
+     (purchase "Purchase"
+               (string->number acct-num)
+               (string->number timestamp)
+               merchant
+               (string->number amount))]
+    [(list "Payment" acct-num timestamp "Cash" amount)
+     (cash "Payment"
+           (string->number acct-num)
+           (string->number timestamp)
+           "Cash"
+           (string->number amount))]
+    [(list "Payment" acct-num timestamp "Check" chk-num amount)
+     (check "Payment"
+            (string->number acct-num)
+            (string->number timestamp)
+            "Check"
+            (string->number chk-num)
+            (string->number amount))]
+    [(list "Payment" acct-num timestamp "Credit" card-num amount)
+     (credit "Payment"
+             (string->number acct-num)
+             (string->number timestamp)
+             "Credit"
+             (string->number card-num)
+             (string->number amount))]
+    [else (error (format "Error reading transaction format: ~a\n"
+                         data))]))
 
 ;; The following is the dedicated function for reading in accounts.txt
-(define (reading_accounts_data data filename)
+(define (reading-accounts-data data)
   (match data
-           [(list string_acct_num name string_balance)
-            (define acct_num (string->number string_acct_num))
-            (define balance (string->number string_balance))
-            (user acct_num name balance)
-            (printf "User information - Account Number: ~a\n" acct_num)
-            (if (number? acct_num)
-                (printf "Account Number is in numeric data form\n")
-                (printf "Account Number is still in string data form\n"))
-            (printf " Name: ~a\n" name)
-            (if (string? name)
-                (printf "Account Number is in string data form\n")
-                (printf "Account Number is in unknown data form\n"))
-            (printf "Balance: ~a\n" balance)
-            (if (number? balance)
-                (printf "User Balance is in numeric data form\n")
-                (printf "User Balance is still in string data form\n"))]
-           [_ (error (format "Error reading file: ~a" filename))]))
-
-;; The following function below will decide which manipulation tactics to do based on the .txt it is being pulled from
+    [(list string-acct-num name string-balance)
+     (let ([acct-num (string->number string-acct-num)]
+           [balance (string->number string-balance)])
+       (user acct-num name balance))]
+    [_ (error (format "Error reading file: ACCOUNTS.txt"))]))
 
 ;; This function is intended to clean up the lines read in
 ;; and send the information appropriate to the file it was read from
@@ -53,43 +89,150 @@
       (cond
         ;; If the file being read is accounts
         [(string=? filename "ACCOUNTS.TXT")
-         (reading_accounts_data data filename)]
+         (reading-accounts-data data)]
 
         ;; If the file being read is transactions
         [(string=? filename "TRANSACTIONS.TXT")
-         (reading_transaction_data data filename)]
+         (reading-transaction-data data)]
 
         ;; If the file being read is neither
         [else (error (format "File not found: ~a" filename))]))))
 
   
-;; The following function will open and read in the data lines into a list (lines), before calling for File Manipulation
+#|The following function will open and read in the data lines
+  into a list (lines), before calling for File Manipulation|#
 (define (process-file filename)
-  (let ([lines (file->lines filename)])
-    (for ([line (in-list lines)])
-      (fileManip line filename))))
+  (define lines (file->lines filename))
+  (map (λ (line) (fileManip line filename)) lines))
 
-;; This function is intended to execute if and only if line 5 is set to true
-(define (create_output_check)
-  (if create_output
+;; This function is intended to execute only if line 5 is set to true
+(define (create-output-check)
+  (if create-output
       [call-with-output-file "STATEMENT.TXT"
-        (λ (out-port) ;; If Line 5 is True, then this is where the output file is to be created and formatted
+        (λ (out-port) ;; If Line 5 is True...
           [display "Output functions as intended." out-port])]
       (begin ;; If Line 5 is False
-        (displayln "Output file has not been created due to initial Bool call.")
-        (displayln "To create the output file, change line 5 to '#t' and try again"))))
+        (displayln "Output file has not been created due to initial Bool
+call.")
+        (displayln "To create the output file, change line 7 to '#t' and
+try again"))))
+
+#| For debugging purposes, the following functions are purely intended to
+serve as information functions to help track the state of all identifiers
+throughout the program|#
+
+(define (show-user-struct-info accounts-list)
+  (for-each (λ (user)
+              (printf "Account: ~a, Name: ~a, Balance: ~a\n"
+                      (user-acct-num user)
+                      (user-name user)
+                      (user-balance user)))
+            accounts-list))
+
+(define (show-transaction-struct-info transactions-list)
+  (for-each (λ (transaction)
+              (printf "Type: ~a, Account Number: ~a, Timestamp: ~a, "
+                      (transaction-type transaction)
+                      (transaction-acct-num transaction)
+                      (transaction-timestamp transaction))
+              (cond
+                [(purchase? transaction)
+                 (printf "Merchant: ~a, Amount: ~a\n"
+                         (purchase-merchant transaction)
+                         (purchase-amount transaction))]
+                [(cash? transaction)
+                 (printf "Method: ~a, Amount: ~a\n"
+                         (cash-method transaction)
+                         (cash-amount transaction))]
+                [(check? transaction)
+                 (printf "Method: ~a, Check Number: ~a, Amount: ~a\n"
+                         (check-method transaction)
+                         (check-chk-num transaction)
+                         (check-amount transaction))]
+                [(credit? transaction)
+                 (printf "Method: ~a, Card Number: ~a, Amount: ~a\n"
+                         (credit-method transaction)
+                         (credit-card-num transaction)
+                         (credit-amount transaction))]))
+            transactions-list))
 
 #| The following is the main bulk of all debugging functions.
-If all are off, then program will operate as normal.
-If any are on, then the interaction panel will display the appropriate debugging call|#
-(define (debugging_check)
-  (create_output_check)
-  ;; (output_accounts_check)
-  #| (output_transactions_check)|#)
-  
-(define (main)
-  (process-file "ACCOUNTS.TXT")
-  (process-file "TRANSACTIONS.TXT")
-  (debugging_check))
+If all are off, then program will ignore everything and run as normal.
+If any are on, then the interaction panel will display the appropriate
+debugging call. Check lines 7-x for which debugging check you want|#
 
-(main)
+(define (debugging-check accounts-list transactions-list)
+  (begin
+    (if display-user-struct-information
+        (show-user-struct-info accounts-list)
+        (void))
+    (if display-transaction-struct-information
+        (show-transaction-struct-info transactions-list)
+        (void))
+    (create-output-check)))
+
+;; Creates a list of only the account numbers in the users account list
+(define (only-account-numbers accounts-list)
+  (map user-acct-num accounts-list))
+
+;; Filters the list of transactions using a given account number
+(define (filter-by-account all-transactions account-number)
+  (filter (λ (transaction)
+            (= (transaction-acct-num transaction) account-number))
+          all-transactions))
+
+#| Given a list of filtered transactions under 1 user account number,
+use the amount tag for each payment and add them together to create the
+sum payment amount for the account's history|#
+(define (sum-payments filtered-transactions)
+  (foldl (lambda (transaction acc)
+           (cond [(cash? transaction)
+                  (+ (cash-amount transaction) acc)]
+                 [(check? transaction)
+                  (+ (check-amount transaction) acc)]
+                 [(credit? transaction)
+                  (+ (credit-amount transaction) acc)]
+                 [else acc]))
+         0
+         filtered-transactions))
+
+#| Given a list of filtered transactions under 1 user account number,
+use the amount tag for each purchase and add them together to create the
+sum purchase amount for the account's history|#
+(define (sum-purchases filtered-transactions)
+  (foldl (lambda (transaction acc)
+           (if (purchase? transaction)
+               (+ (purchase-amount transaction) acc)
+               acc))
+         0
+         filtered-transactions))
+
+(define (process-account all-transactions account-num)
+  (let* ([filtered-transactions
+          (filter-by-account all-transactions account-num)]
+         [total-payments (sum-payments filtered-transactions)]
+         [total-purchases (sum-purchases filtered-transactions)])
+    ;; Output or return the aggregated data
+    (values total-payments total-purchases)))
+
+#| This is the start of the 'main' function, what is intended to
+automatically execute when using the run function of the compiler|#
+(define (main)
+  (define accounts-list (process-file "ACCOUNTS.TXT"))
+  (define transactions-list (process-file "TRANSACTIONS.TXT"))
+
+  (for-each (lambda (account-num)
+              (let-values (((total-payments total-purchases)
+                            (process-account
+                             transactions-list account-num)))
+                (printf
+                 "Account: ~a\nTotal Payments: ~a\nTotal Purchases: ~a\n"
+                 account-num
+                 total-payments
+                 total-purchases)))
+            (only-account-numbers accounts-list))
+  
+  (debugging-check accounts-list transactions-list))
+
+(when (equal? (current-command-line-arguments) '("run"))
+  (main))

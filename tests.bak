@@ -1,7 +1,12 @@
 #lang racket
 
 (require rackunit)
-(require "C:/Users/Major/OneDrive/UMKC Comp Sci/COMP SCI 353/Program-3/Program-3.rkt") ;; Adjust the path if your file is in a different location or named differently
+
+;; Require your program module with renaming to avoid conflicts
+(require (rename-in "Program-3.rkt"
+                    
+#| Renames 'check' to 'program-check' or another suitable name |#
+                    [check program-check]))  
 
 (module+ test
   ;; Define all your unit tests here
@@ -19,11 +24,27 @@
 
   (define (test-payment-calculation)
     ;; Test the calculation of payments
-    (let ([transactions (list (cash "Payment" 123456789012 20200101 "Cash" 150.00)
-                              (check "Payment" 123456789012 20200102 "Check" 11101 200.00)
-                              (credit "Payment" 123456789012 20200103 "Credit" "5500550055005500" 250.00))])
-      (check-equal? (sum-payments transactions) 600.00
-                    "Payments should be calculated correctly")))
+    (let* ([test-transactions (list (cash "Payment"
+                                    123456789012
+                                    20200101
+                                    "Cash"
+                                    150.00)
+                              (check "Payment"
+                                     123456789012
+                                     20200102
+                                     "Check"
+                                     11101
+                                     200.00)
+                              (credit "Payment"
+                                      123456789012
+                                      20200103
+                                      "Credit"
+                                      5500550055005500
+                                      250.00))]
+      ;; Filter transactions by account number 123456789012
+         [filtered-transactions (filter-by-account test-transactions 123456789012)])
+    (check-equal? (sum-payments filtered-transactions) 600.00
+                  "Payments should be calculated correctly")))
 
   (define (test-purchase-calculation)
     ;; Test the calculation of purchases
@@ -38,8 +59,3 @@
   (test-payment-calculation)
   (test-purchase-calculation)
 )
-
-;; Ensure tests only run when this module is being tested
-(when (module-name-resolver 'test)
-  (require 'rackunit)
-  (run-tests 'test))
