@@ -16,17 +16,12 @@
 (struct check transaction (method chk-num amount) #:transparent)
 
 ;; Accounts for both debit and credit card payments
-(struct credit transaction (method card-num amount) #:transparent)
-
-;; Dynamic Counter to create and track a transactions' ID upon reading in
-(define transaction-counter (make-parameter 10001))
+(struct card transaction (method card-num amount) #:transparent)
 
 ;; Creates a unique transaction upon intial read
-(define (generate-transaction-id)
-  (let ([id (transaction-counter)])
-    (transaction-counter (λ (x) (+ x 1)))
-    id))
-
+(define (generate-transaction-id line-number)
+  (+ (- line-number 1) 10001))
+  
 #| This function matches the data line currently read according
 to its identifiers, separating the information appropriately before
 returning the struct properly formatted for mapping.
@@ -34,37 +29,45 @@ returning the struct properly formatted for mapping.
 Note: It is imperative that the transaction data lines are following the
 formatting rules outlined in the assignment's documentation|#
 
-(define (reading-transaction-data data)
-  (let ([id (generate-transaction-id)])
+(define (reading-transaction-data data line-number)
+  (let ([id (generate-transaction-id line-number)])
   (match data
     [(list "Purchase" acct-num timestamp merchant amount)
      (purchase id
-               "Purchase"
+               'purchase
                (string->number acct-num)
                (string->number timestamp)
                merchant
                (string->number amount))]
     [(list "Payment" acct-num timestamp "Cash" amount)
      (cash id
-           "Payment"
+           'payment
            (string->number acct-num)
            (string->number timestamp)
-           "Cash"
+           'cash
            (string->number amount))]
     [(list "Payment" acct-num timestamp "Check" chk-num amount)
      (check id
-            "Payment"
+            'payment
             (string->number acct-num)
             (string->number timestamp)
-            "Check"
+            'check
             (string->number chk-num)
             (string->number amount))]
     [(list "Payment" acct-num timestamp "Credit" card-num amount)
-     (credit id
-             "Payment"
+     (card id
+             'payment
              (string->number acct-num)
              (string->number timestamp)
-             "Credit"
+             'credit
+             (string->number card-num)
+             (string->number amount))]
+    [(list "Payment" acct-num timestamp "Debit" card-num amount)
+          (card id
+             'payment
+             (string->number acct-num)
+             (string->number timestamp)
+             'debit
              (string->number card-num)
              (string->number amount))]
     [else (error (format "Error reading transaction format: ~a\n"
@@ -73,15 +76,15 @@ formatting rules outlined in the assignment's documentation|#
 ;; The following is the dedicated function for reading in accounts.txt
 (define (reading-accounts-data data)
   (match data
-    [(list string-acct-num name string-balance)
-     (let ([acct-num (string->number string-acct-num)]
-           [balance (string->number string-balance)])
+    [(list acct-num name balance)
+     (let ([acct-num (string->number acct-num)]
+           [balance (string->number balance)])
        (user acct-num name balance))]
     [_ (error (format "Error reading file: ACCOUNTS.txt"))]))
 
 ;; This function is intended to clean up the lines read in
 ;; and send the information appropriate to the file it was read from
-(define (fileManip line filename)
+(define (fileManip line-number line filename)
   (begin
     (let* (;; Removes /r, /n, and \" special characters from lines
            [cleaned-line (regexp-replace* #rx"\r|\n|[\"]" line "")]
@@ -99,7 +102,7 @@ formatting rules outlined in the assignment's documentation|#
 
         ;; If the file being read is transactions
         [(string=? filename "TRANSACTIONS.TXT")
-         (reading-transaction-data data)]
+         (reading-transaction-data data line-number)]
 
         ;; If the file being read is neither
         [else (error (format "File not found: ~a" filename))]))))
@@ -109,4 +112,6 @@ formatting rules outlined in the assignment's documentation|#
   into a list (lines), before calling for File Manipulation|#
 (define (process-file filename)
   (define lines (file->lines filename))
-  (map (λ (line) (fileManip line filename)) lines))
+  (for/list ([line lines]
+             [line-number (in-naturals)])
+    (fileManip line-number line filename)))

@@ -1,0 +1,26 @@
+STATEMENT OF ACCOUNT
+123456789012  John Doe  Starting Balance:               1000.0
+
+20200101 purchase Long Merchant Name That Exceeds Forty Ch                200.0
+20200102 payment Cash                300.0
+
+Total Purchases:                200.0
+Total Payments:                300.0
+Ending Balance:               1100.0
+
+******************************************
+***************
+
+STATEMENT OF ACCOUNT
+234567890123  Jane Smith  Starting Balance:               1500.0
+
+20200103 payment Check                400.0
+20200104 payment credit                500.0
+
+Total Purchases:                    0
+Total Payments:                900.0
+Ending Balance:               2400.0
+
+******************************************
+***************
+

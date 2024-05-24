@@ -7,6 +7,15 @@
 (define (only-account-numbers accounts-list)
   (map user-acct-num accounts-list))
 
+;; Filters the list of accounts using a given account number
+(define (searched-user-account all-accounts account-num)
+  (first
+   (filter
+    (lambda (user)
+      (= (user-acct-num user)
+         account-num))
+    all-accounts)))
+
 ;; Filters the list of transactions using a given account number
 (define (filter-by-account all-transactions account-number)
   (filter (λ (transaction)
@@ -22,8 +31,8 @@ sum payment amount for the account's history|#
                   (+ (cash-amount transaction) acc)]
                  [(check? transaction)
                   (+ (check-amount transaction) acc)]
-                 [(credit? transaction)
-                  (+ (credit-amount transaction) acc)]
+                 [(card? transaction)
+                  (+ (card-amount transaction) acc)]
                  [else acc]))
          0
          filtered-transactions))
@@ -39,10 +48,26 @@ sum purchase amount for the account's history|#
          0
          filtered-transactions))
 
-(define (process-account all-transactions account-num)
-  (let* ([filtered-transactions
-          (filter-by-account all-transactions account-num)]
+#| Given a starting balance, total-payments, and total-purchases value,
+calculate the amount to add or subtract from the starting balance based
+on the change of money given through subtracting the total payments from
+purchases. It also allows an easy point of diagnosis, considering that
+the net change in any given day can be easily extrapolated if necessary|#
+(define (calculate-ending-balance starting-balance
+                                  total-payments
+                                  total-purchases)
+  (+ (- total-payments total-purchases) starting-balance))
+
+
+(define (process-account all-transactions all-accounts account-num)
+  (let* ([filtered-transactions (filter-by-account all-transactions
+                                                   account-num)]
          [total-payments (sum-payments filtered-transactions)]
-         [total-purchases (sum-purchases filtered-transactions)])
+         [total-purchases (sum-purchases filtered-transactions)]
+         [user-account (searched-user-account all-accounts account-num)]
+         [ending-balance (calculate-ending-balance
+                          (user-balance user-account)
+                          total-payments
+                          total-purchases)])
     ;; Output or return the aggregated data
-    (values total-payments total-purchases)))
+    (values total-payments total-purchases ending-balance)))
