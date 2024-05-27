@@ -1,11 +1,12 @@
 #lang racket
 
-(require "preprocessing.rkt")
-(require "processing.rkt")
+(require "preprocessing.rkt"
+         "processing.rkt"
+         racket/format)
 
 (provide (all-defined-out))
 
-(define create-output #f)
+(define create-output #t)
 
 ;; Sorts the transactions based on their timestamp, using Timsort algo
 (define (sort-transactions transactions)
@@ -21,17 +22,52 @@
           (< (user-acct-num a)
              (user-acct-num b)))))
 
-;; Function to right-align a number to a specified width
-(define (right-align num width)
-  (let ([str (number->string num)])
-    (string-append (make-string (- width (string-length str))
-                                #\space) str)))
-
-;; Function to truncate a string to a maximum length
-(define (truncate str max-length)
-  (if (> (string-length str) max-length)
-      (substring str 0 max-length)
-      str))
+;; Helper function to format a transaction into a 54 character string
+(define (format-transaction transaction)
+  (let* ([timestamp (transaction-timestamp transaction)]
+         [type (string-titlecase
+                (symbol->string
+                 (transaction-type transaction)))]
+         [details (cond
+                    [(purchase? transaction)
+                     (purchase-merchant transaction)]
+                    [(cash? transaction)
+                     "Cash"]
+                    [(check? transaction)
+                     "Check"]
+                    [(card? transaction)
+                     (string-titlecase
+                      (symbol->string
+                       (card-method transaction)))])]
+         [amount (cond
+                   [(purchase? transaction)
+                    (purchase-amount transaction)]
+                   [(cash? transaction)
+                    (cash-amount transaction)]
+                   [(check? transaction)
+                    (check-amount transaction)]
+                   [(card? transaction)
+                    (card-amount transaction)])])
+         (string-append
+          (format "~a " (~a timestamp
+                            #:width 7
+                            #:align `left
+                            #:right-pad-string " "))
+          (format "~a " (~a type
+                            #:width 11
+                            #:align `left
+                            #:right-pad-string " "))
+          (format "~a " (~s details
+                            #:width 39
+                            #:max-width 39
+                            #:align `left
+                            #:right-pad-string " "))
+          (format "~a " (~a
+                         (~r amount
+                             #:precision '(= 2))
+                         #:min-width 10
+                         #:align `right
+                         #:left-pad-string " ")))))
 
 ;; Function to format and create the output file
 (define (create-output-file accounts transactions)
@@ -59,51 +95,52 @@
                  (sort-transactions filtered-transactions)])
            ;; Write the statement header
            (fprintf out-port "STATEMENT OF ACCOUNT\n")
-           (fprintf out-port "~a  ~a  Starting Balance: ~a\n\n"
-                    acct-num user-name (right-align starting-balance 20))
+           (fprintf out-port "~a~aStarting Balance: ~a\n\n"
+                    (~a acct-num
+                        #:min-width 20
+                        #:align 'left
+                        #:right-pad-string " ")
+                    (~a user-name
+                        #:min-width 20
+                        #:align 'left
+                        #:right-pad-string " ")
+                    (~a
+                     (~r starting-balance
+                         #:precision '(= 2))
+                     #:min-width 12
+                     #:align 'right
+                     #:left-pad-string " "))
            
            ;; Write the transactions
            (for-each
             (lambda (transaction)
-              (let ([timestamp (transaction-timestamp transaction)]
-                    [type (transaction-type transaction)]
-                    [amount (cond
-                              [(purchase? transaction)
-                               (purchase-amount transaction)]
-                              [(cash? transaction)
-                               (cash-amount transaction)]
-                              [(check? transaction)
-                               (check-amount transaction)]
-                              [(card? transaction)
-                               (card-amount transaction)])]
-                    [details (cond
-                               [(purchase? transaction)
-                                (truncate (purchase-merchant transaction)
-                                          40)]
-                               [(cash? transaction)
-                                "Cash"]
-                               [(check? transaction)
-                                "Check"]
-                               [(card? transaction)
-                                (card-method transaction)])])
-                (fprintf out-port "~a ~a ~a ~a\n"
-                         timestamp
-                         type
-                         details
-                         (right-align amount 20))))
+              (fprintf out-port "~a\n"
+                       (format-transaction transaction)))
             sorted-transactions)
 
            ;; Write the summary
-           (fprintf out-port "\nTotal Purchases: ~a\n"
-                    (right-align total-purchases 20))
+           (fprintf out-port "\nTotal Purchases:~a\n"
+                    (~a (~r total-purchases
+                            #:precision '(= 2))
+                        #:min-width 16
+                        #:align 'right
+                        #:left-pad-string " "))
            (fprintf out-port "Total Payments: ~a\n"
-                    (right-align total-payments 20))
+                    (~a (~r total-payments
+                            #:precision '(= 2))
+                        #:min-width 16
+                        #:align 'right
+                        #:left-pad-string " "))
            (fprintf out-port "Ending Balance: ~a\n"
-                    (right-align ending-balance 20))
+                    (~a (~r ending-balance
+                            #:precision '(= 2))
+                        #:min-width 16
+                        #:align 'right
+                        #:left-pad-string " "))
            
            ;; Write the separator
-           (fprintf out-port "\n******************************************
-***************\n\n")))
+           (fprintf out-port
+                    (string-append "\n" (make-string 70 #\*) "\n"))))
        accounts))
     #:exists 'truncate))
 

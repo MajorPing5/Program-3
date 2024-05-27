@@ -56,7 +56,7 @@ the net change in any given day can be easily extrapolated if necessary|#
 (define (calculate-ending-balance starting-balance
                                   total-payments
                                   total-purchases)
-  (+ (- total-payments total-purchases) starting-balance))
+  (+ (- total-purchases total-payments) starting-balance))
 
 
 (define (process-account all-transactions all-accounts account-num)

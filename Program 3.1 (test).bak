@@ -1,49 +1,129 @@
 #lang racket
 
-(define filename "ACCOUNTS.TXT")
+#|The following is intended to serve as the struct for
+  user account information|#
+(struct user (acct_num name balance) #:transparent)
 
-(define lines
-  '("456109801804  \"J. L. Picard\"   0.0 \r" "234987234981  \"J. T. Kirk & Co.\"  298.18\r" "982340982348  \"Spacely Sprockets\"  29109.14\r"))
+#| The following demonstrates a polymorphic struct data type for payments,
+   allowing easier addition of different payment types based on what's
+   allowed and not without the need of adding more complex structs. |#
+(struct transaction (type acct_num timestamp) #:transparent)
 
-;; The following holds the global reference for all properly processed data to ensure easy referencing
-(define processed-accounts '())
+(struct purchase transaction (merchant amount) #:transparent)
+(struct cash transaction (method amount) #:transparent)
+(struct check transaction (method chk_num amount) #:transparent)
 
-;; The following is intended to serve as the struct for user account information
-(struct user
-  (acct_num name balance) #:transparent)
+ ;; Accounts for both debit and credit card payments
+(struct credit transaction (method card_num amount) #:transparent)
 
-;; The following is the dedicated function for reading in transaction.txt
-(define (reading_transaction_data data filename)
-  (displayln "Transaction data in process of being read"))
+#| This function matches the data line currently read according
+   to its identifiers, separating the information appropriately before
+   returning the struct properly formatted for mapping|#
+(define (reading_transaction_data data)
+  (match data
+    [(list "Purchase" acct_num timestamp merchant amount)
+     (purchase "Purchase"
+               (string->number acct_num)
+               (string->number timestamp)
+               merchant
+               (string->number amount))]
+    [(list "Payment" acct_num timestamp "Cash" amount)
+     (cash "Payment"
+           (string->number acct_num)
+           (string->number timestamp)
+           "Cash"
+           (string->number amount))]
+    [(list "Payment" acct_num timestamp "Check" chk_num amount)
+     (check "Payment"
+            (string->number acct_num)
+            (string->number timestamp)
+            "Check"
+            (string->number chk_num)
+            (string->number amount))]
+    [(list "Payment" acct_num timestamp "Credit" card_num amount)
+     (credit "Payment"
+             (string->number acct_num)
+             (string->number timestamp)
+             "Credit"
+             (string->number card_num)
+             (string->number amount))]
+    [else (error (format "Error reading transaction format: ~a\n"
+                         data))]))
 
 ;; The following is the dedicated function for reading in accounts.txt
-(define (reading_accounts_data data filename)
-  (λ (data filename)
-         (match data
-           [(list acct_num name balance)
-            (user (string->number acct_num) name (string->number balance))]
-           [_ (error (format "Error reading file: ~a" filename))])))
+(define (reading_accounts_data data)
+  (match data
+           [(list string_acct_num name string_balance)
+            (let ([acct_num (string->number string_acct_num)]
+                  [balance (string->number string_balance)])
+            (user acct_num name balance))]
+           [_ (error (format "Error reading account information: ~a\n"
+                             data))]))
 
+;; This function is intended to clean up the lines read in
+;; and send the information appropriate to the file it was read from
 (define (fileManip line filename)
-(begin
-  (let* (;; Removes /r or /n special characters from lines
-         [cleaned-line (regexp-replace* #rx"\r|\n" line "")]
-         ;; Trims lines for excess spaces after removal of spec chars
-         [trimmed-line (string-trim cleaned-line)]
-         ;; Look for double space or tab special character exclusively
-         [data (regexp-split #px"[ ]{2,}|[\t]+" trimmed-line)])
-    
-    (cond [(string=? filename "ACCOUNTS.TXT") ;; If the file being read is accounts
-           (reading_accounts_data data filename)
-           (cons user processed-accounts)]
-          [(string=? filename "TRANSACTIONS.TXT")
-           (reading_transaction_data data filename)]
-          [else (error (format "File not found: ~a" filename))])
-    
-    (displayln data))))
+  (begin
+    (let* (;; Removes /r, /n, and \" special characters from lines
+           [cleaned-line (regexp-replace* #rx"\r|\n|[\"]" line "")]
 
-;; The following function will open and read in the data lines into a list (lines), before calling for File Manipulation
+           ;; Trims lines for excess spaces after removal of spec chars
+           [trimmed-line (string-trim cleaned-line)]
+         
+           ;; Look for double space or tab special character exclusively
+           [data (regexp-split #px"[ ]{2,}|[\t]+" trimmed-line)])
+   
+      (cond
+        ;; If the file being read is accounts
+        [(string=? filename "ACCOUNTS.TXT")
+         (reading_accounts_data data)]
+
+        ;; If the file being read is transactions
+        [(string=? filename "TRANSACTIONS.TXT")
+         (reading_transaction_data data)]
+
+        ;; If the file being read is neither
+        [else (error (format "File not found: ~a" filename))]))))
+
+#|The following function will open and read in the data lines
+  into a list (lines), before calling for File Manipulation|#
 (define (process-file filename)
-  (let ([lines (file->lines filename)])
-    (for ([line (in-list lines)])
-      (fileManip line filename))))
+  (define lines (file->lines filename))
+  (map (λ (line) (fileManip line filename)) lines))
+
+(define (main)
+  (define accounts-list (process-file "ACCOUNTS.TXT"))
+  (define transactions-list (process-file "TRANSACTIONS.TXT"))
+  (for-each (λ (user)
+              (printf "Account: ~a, Name: ~a, Balance: ~a\n"
+                      (user-acct_num user)
+                      (user-name user)
+                      (user-balance user)))
+              accounts-list)
+  (for-each (λ (transaction)
+              (printf "Type: ~a, Account Number: ~a, Timestamp: ~a, "
+                      (transaction-type transaction)
+                      (transaction-acct_num transaction)
+                      (transaction-timestamp transaction))
+              (cond
+                [(purchase? transaction)
+                 (printf "Merchant: ~a, Amount: ~a\n"
+                         (purchase-merchant transaction)
+                         (purchase-amount transaction))]
+                [(cash? transaction)
+                 (printf "Method: ~a, Amount: ~a\n"
+                         (cash-method transaction)
+                         (cash-amount transaction))]
+                [(check? transaction)
+                 (printf "Method: ~a, Check Number: ~a, Amount: ~a\n"
+                         (check-method transaction)
+                         (check-chk_num transaction)
+                         (check-amount transaction))]
+                [(credit? transaction)
+                 (printf "Method: ~a, Card Number: ~a, Amount: ~a\n"
+                         (credit-method transaction)
+                         (credit-card_num transaction)
+                         (credit-amount transaction))]))
+              transactions-list))
+  
+(main)

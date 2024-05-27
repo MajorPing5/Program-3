@@ -191,8 +191,8 @@
       "Balance Calculation"
       (begin
         (reset-transaction-counter)
-        (let* ([total-purchases 500.00]
-               [total-payments 900.00]
+        (let* ([total-purchases 900.00]
+               [total-payments 500.00]
                [starting-balance 50.00])
           (check-= (calculate-ending-balance starting-balance
                                   total-payments
@@ -249,22 +249,21 @@
                                       sample-transactions)))]
              [expected-output
   "STATEMENT OF ACCOUNT
-123456789012  John Doe  Starting Balance:                1000.00
+123456789012  John Doe    Starting Balance:              1000.00
 
-20200101 purchase Long Merchant Name That Exceeds Forty   200.00
-20200102 payment cash                                     300.00
+20200101 Purchase Long Merchant Name That Exceeds Forty   200.00
+20200102 Payment  Cash                                    300.00
 
 Total Purchases:               200.00
 Total Payments:                300.00
 Ending Balance:               1100.00
 
 *********************************************************
-
 STATEMENT OF ACCOUNT
-234567890123  Jane Smith  Starting Balance:             1500.00
+234567890123  Jane Smith  Starting Balance:              1500.00
 
-20200103 payment check                                   400.00
-20200104 payment credit                                  500.00
+20200103 Payment  Check                                   400.00
+20200104 Payment  Credit                                  500.00
 
 Total Purchases:                 0.00
 Total Payments:                900.00
